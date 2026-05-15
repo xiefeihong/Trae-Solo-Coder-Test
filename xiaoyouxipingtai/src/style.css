@@ -1,0 +1,29 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --primary-color: #ff6b35;
+  --secondary-color: #f7c948;
+  --accent-color: #4ecdc4;
+  --green-color: #95e1a3;
+  --text-color: #333;
+  --bg-color: #fff9e6;
+  --card-bg: #ffffff;
+  --shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  --shadow-hover: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, var(--bg-color) 0%, #ffeaa7 100%);
+  min-height: 100vh;
+  color: var(--text-color);
+}
+
+#app {
+  width: 100%;
+  min-height: 100vh;
+}
