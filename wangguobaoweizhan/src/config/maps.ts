@@ -23,7 +23,7 @@ const createTerrain = (width: number, height: number, pathCells: [number, number
         ].some(([nx, ny]) => 
           nx >= 0 && nx < width && ny >= 0 && ny < height && terrain[ny][nx] === 'road'
         );
-        if (hasRoadNeighbor && Math.random() > 0.3) {
+        if (hasRoadNeighbor) {
           terrain[y][x] = 'buildable';
         }
       }

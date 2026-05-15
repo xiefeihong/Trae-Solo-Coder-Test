@@ -10,22 +10,28 @@ const props = defineProps<Props>();
 const gameStore = useGameStore();
 
 function startWave() {
-  props.engine.startWave();
   if (gameStore.gameState === 'idle') {
     props.engine.start();
+    gameStore.setGameState('playing');
   }
+  props.engine.startWave();
+  gameStore.setWaveInProgress(props.engine.waveInProgress);
+  gameStore.setCurrentWave(props.engine.currentWave);
 }
 
 function togglePause() {
   if (gameStore.gameState === 'playing') {
     props.engine.pause();
+    gameStore.setGameState('paused');
   } else if (gameStore.gameState === 'paused') {
     props.engine.resume();
+    gameStore.setGameState('playing');
   }
 }
 
 function setSpeed(speed: number) {
   props.engine.setGameSpeed(speed);
+  gameStore.setGameSpeed(speed);
 }
 </script>
 

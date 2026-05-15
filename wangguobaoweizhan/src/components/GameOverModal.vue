@@ -12,6 +12,16 @@ const gameStore = useGameStore();
 function restartGame() {
   props.engine.reset();
   gameStore.reset();
+  
+  setTimeout(() => {
+    const canvas = document.querySelector('.game-canvas') as HTMLCanvasElement;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        props.engine.render(ctx);
+      }
+    }
+  }, 0);
 }
 </script>
 

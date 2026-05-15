@@ -11,12 +11,17 @@ const gameStore = useGameStore();
 
 function upgradeTower() {
   if (!gameStore.selectedTower) return;
-  props.engine.upgradeTower(gameStore.selectedTower.id);
+  const success = props.engine.upgradeTower(gameStore.selectedTower.id);
+  if (success) {
+    gameStore.setGold(props.engine.gold);
+  }
 }
 
 function sellTower() {
   if (!gameStore.selectedTower) return;
   props.engine.sellTower(gameStore.selectedTower.id);
+  gameStore.setGold(props.engine.gold);
+  gameStore.setSelectedTower(props.engine.selectedTower);
 }
 
 function closePanel() {

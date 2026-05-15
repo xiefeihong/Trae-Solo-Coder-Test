@@ -124,6 +124,7 @@ export class GameEngine {
     const tower = new Tower(type, gridPos, this.map.cellSize);
     this.towers.push(tower);
     this.gold -= config.cost;
+    this.buildMode = null;
 
     if (type === 'barracks') {
       this.spawnSoldiers(tower);

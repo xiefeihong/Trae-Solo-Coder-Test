@@ -48,13 +48,17 @@ function handleCanvasClick(event: MouseEvent) {
 
   if (props.engine.buildMode) {
     const gridPos = props.engine.map.getGridPosition({ x, y });
-    const success = props.engine.buildTower(props.engine.buildMode, gridPos);
-    if (success) {
-      props.engine.buildMode = null;
-      gameStore.setBuildMode(null);
-    }
+    props.engine.buildTower(props.engine.buildMode, gridPos);
+    gameStore.setBuildMode(props.engine.buildMode);
+    gameStore.setGold(props.engine.gold);
   } else {
     props.engine.selectTowerAtPosition({ x, y });
+    gameStore.setSelectedTower(props.engine.selectedTower);
+  }
+  
+  const ctx = canvasRef.value.getContext('2d');
+  if (ctx) {
+    props.engine.render(ctx);
   }
 }
 
@@ -77,20 +81,24 @@ watch(() => gameStore.gameState, (newState) => {
     startGameLoop();
   } else {
     stopGameLoop();
-  }
-}, { immediate: true });
-
-onMounted(() => {
-  if (canvasRef.value!.width = props.engine.map.width * props.engine.map.cellSize;
-  canvasRef.value!.height = props.engine.map.height * props.engine.map.cellSize;
-  
-  if (gameStore.gameState === 'playing') {
-    startGameLoop();
-  } else {
     const ctx = canvasRef.value?.getContext('2d');
     if (ctx) {
       props.engine.render(ctx);
     }
+  }
+});
+
+onMounted(() => {
+  canvasRef.value!.width = props.engine.map.width * props.engine.map.cellSize;
+  canvasRef.value!.height = props.engine.map.height * props.engine.map.cellSize;
+  
+  const ctx = canvasRef.value?.getContext('2d');
+  if (ctx) {
+    props.engine.render(ctx);
+  }
+  
+  if (gameStore.gameState === 'playing') {
+    startGameLoop();
   }
 });
 
