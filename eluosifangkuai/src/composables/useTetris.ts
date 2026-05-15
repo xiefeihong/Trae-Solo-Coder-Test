@@ -2,19 +2,35 @@ import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
 
 export const BOARD_WIDTH = 10
 export const BOARD_HEIGHT = 20
-export const PREVIEW_SIZE = 4
+export const PREVIEW_SIZE = 5
 
 export type TetrominoType = 'I' | 'O' | 'T' | 'L' | 'J' | 'S' | 'Z'
+export type PentominoType = 'P' | 'F' | 'X' | 'U' | 'V' | 'W' | 'N'
+export type PieceType = TetrominoType | PentominoType
 
 export interface Tetromino {
-  type: TetrominoType
+  type: PieceType
   shape: number[][]
   color: string
+  size: 4 | 5
 }
 
 export interface Position {
   x: number
   y: number
+}
+
+export type Difficulty = 'easy' | 'normal' | 'hard' | 'expert' | 'custom'
+
+export interface DifficultyConfig {
+  name: string
+  label: string
+  baseInterval: number
+  levelSpeedFactor: number
+  minInterval: number
+  includePentomino: boolean
+  pentominoChance: number
+  linesPerLevel: number
 }
 
 export interface GameState {
@@ -31,6 +47,62 @@ export interface GameState {
   gameOver: boolean
   isPaused: boolean
   isStarted: boolean
+  difficulty: Difficulty
+  customSpeed: number
+  showPentomino: boolean
+}
+
+const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
+  easy: {
+    name: '简单',
+    label: '😊 简单',
+    baseInterval: 800,
+    levelSpeedFactor: 30,
+    minInterval: 200,
+    includePentomino: false,
+    pentominoChance: 0,
+    linesPerLevel: 15
+  },
+  normal: {
+    name: '普通',
+    label: '😐 普通',
+    baseInterval: 500,
+    levelSpeedFactor: 50,
+    minInterval: 100,
+    includePentomino: false,
+    pentominoChance: 0,
+    linesPerLevel: 10
+  },
+  hard: {
+    name: '困难',
+    label: '😈 困难',
+    baseInterval: 350,
+    levelSpeedFactor: 40,
+    minInterval: 80,
+    includePentomino: false,
+    pentominoChance: 0,
+    linesPerLevel: 8
+  },
+  expert: {
+    name: '专家',
+    label: '🔥 专家',
+    baseInterval: 250,
+    levelSpeedFactor: 30,
+    minInterval: 50,
+    includePentomino: true,
+    pentominoChance: 0.25,
+    linesPerLevel: 6
+  },
+  custom: {
+    name: '自定义',
+    label: '⚙️ 自定义',
+    baseInterval: 500,
+    levelSpeedFactor: 50,
+    minInterval: 50,
+    includePentomino: true,
+    pentominoChance: 0.3,
+    linesPerLevel: 10
+  }
 }
 
 const TETROMINOS: Record<TetrominoType, Tetromino> = {
@@ -42,7 +114,8 @@ const TETROMINOS: Record<TetrominoType, Tetromino> = {
       [0, 0, 0, 0],
       [0, 0, 0, 0]
     ],
-    color: '#00f5ff'
+    color: '#00f5ff',
+    size: 4
   },
   O: {
     type: 'O',
@@ -50,7 +123,8 @@ const TETROMINOS: Record<TetrominoType, Tetromino> = {
       [1, 1],
       [1, 1]
     ],
-    color: '#ffff00'
+    color: '#ffff00',
+    size: 4
   },
   T: {
     type: 'T',
@@ -59,7 +133,8 @@ const TETROMINOS: Record<TetrominoType, Tetromino> = {
       [1, 1, 1],
       [0, 0, 0]
     ],
-    color: '#a855f7'
+    color: '#a855f7',
+    size: 4
   },
   L: {
     type: 'L',
@@ -68,7 +143,8 @@ const TETROMINOS: Record<TetrominoType, Tetromino> = {
       [1, 1, 1],
       [0, 0, 0]
     ],
-    color: '#f97316'
+    color: '#f97316',
+    size: 4
   },
   J: {
     type: 'J',
@@ -77,7 +153,8 @@ const TETROMINOS: Record<TetrominoType, Tetromino> = {
       [1, 1, 1],
       [0, 0, 0]
     ],
-    color: '#3b82f6'
+    color: '#3b82f6',
+    size: 4
   },
   S: {
     type: 'S',
@@ -86,7 +163,8 @@ const TETROMINOS: Record<TetrominoType, Tetromino> = {
       [1, 1, 0],
       [0, 0, 0]
     ],
-    color: '#22c55e'
+    color: '#22c55e',
+    size: 4
   },
   Z: {
     type: 'Z',
@@ -95,17 +173,108 @@ const TETROMINOS: Record<TetrominoType, Tetromino> = {
       [0, 1, 1],
       [0, 0, 0]
     ],
-    color: '#ef4444'
+    color: '#ef4444',
+    size: 4
+  }
+}
+
+const PENTOMINOS: Record<PentominoType, Tetromino> = {
+  P: {
+    type: 'P',
+    shape: [
+      [0, 1, 1, 0, 0],
+      [0, 1, 1, 0, 0],
+      [0, 1, 0, 0, 0],
+      [0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0]
+    ],
+    color: '#ff6b9d',
+    size: 5
+  },
+  F: {
+    type: 'F',
+    shape: [
+      [0, 1, 1, 0, 0],
+      [1, 1, 0, 0, 0],
+      [0, 1, 0, 0, 0],
+      [0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0]
+    ],
+    color: '#06ffa5',
+    size: 5
+  },
+  X: {
+    type: 'X',
+    shape: [
+      [0, 1, 0, 0, 0],
+      [1, 1, 1, 0, 0],
+      [0, 1, 0, 0, 0],
+      [0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0]
+    ],
+    color: '#ffd700',
+    size: 5
+  },
+  U: {
+    type: 'U',
+    shape: [
+      [1, 0, 1, 0, 0],
+      [1, 1, 1, 0, 0],
+      [0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0]
+    ],
+    color: '#00d4ff',
+    size: 5
+  },
+  V: {
+    type: 'V',
+    shape: [
+      [1, 0, 0, 0, 0],
+      [1, 0, 0, 0, 0],
+      [1, 1, 1, 0, 0],
+      [0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0]
+    ],
+    color: '#ff7f50',
+    size: 5
+  },
+  W: {
+    type: 'W',
+    shape: [
+      [0, 0, 1, 0, 0],
+      [0, 1, 1, 0, 0],
+      [1, 1, 0, 0, 0],
+      [0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0]
+    ],
+    color: '#9370db',
+    size: 5
+  },
+  N: {
+    type: 'N',
+    shape: [
+      [0, 1, 0, 0, 0],
+      [0, 1, 1, 0, 0],
+      [0, 0, 1, 1, 0],
+      [0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0]
+    ],
+    color: '#32cd32',
+    size: 5
   }
 }
 
 const TETROMINO_TYPES: TetrominoType[] = ['I', 'O', 'T', 'L', 'J', 'S', 'Z']
+const PENTOMINO_TYPES: PentominoType[] = ['P', 'F', 'X', 'U', 'V', 'W', 'N']
+const ALL_PIECE_TYPES: PieceType[] = [...TETROMINO_TYPES, ...PENTOMINO_TYPES]
 
 const SCORE_TABLE: Record<number, number> = {
   1: 100,
   2: 300,
   3: 500,
-  4: 800
+  4: 800,
+  5: 1200
 }
 
 const COLOR_MAP: Record<number, string> = {
@@ -116,11 +285,18 @@ const COLOR_MAP: Record<number, string> = {
   4: '#f97316',
   5: '#3b82f6',
   6: '#22c55e',
-  7: '#ef4444'
+  7: '#ef4444',
+  8: '#ff6b9d',
+  9: '#06ffa5',
+  10: '#ffd700',
+  11: '#00d4ff',
+  12: '#ff7f50',
+  13: '#9370db',
+  14: '#32cd32'
 }
 
-const getColorIndex = (type: TetrominoType): number => {
-  return TETROMINO_TYPES.indexOf(type) + 1
+const getColorIndex = (type: PieceType): number => {
+  return ALL_PIECE_TYPES.indexOf(type) + 1
 }
 
 export function useTetris() {
@@ -143,17 +319,33 @@ export function useTetris() {
     lines: 0,
     gameOver: false,
     isPaused: false,
-    isStarted: false
+    isStarted: false,
+    difficulty: 'normal',
+    customSpeed: 500,
+    showPentomino: false
+  })
+
+  const currentConfig = computed<DifficultyConfig>(() => {
+    const config = { ...DIFFICULTY_CONFIGS[state.difficulty] }
+    if (state.difficulty === 'custom') {
+      config.baseInterval = state.customSpeed
+    }
+    return config
   })
 
   const dropInterval = computed(() => {
-    return Math.max(100, 500 - (state.level - 1) * 50)
+    const config = currentConfig.value
+    const interval = config.baseInterval - (state.level - 1) * config.levelSpeedFactor
+    return Math.max(config.minInterval, interval)
   })
 
   const typeColorMap = computed(() => {
     const map: Record<string, string> = {}
-    TETROMINO_TYPES.forEach((type, index) => {
-      map[index + 1] = TETROMINOS[type].color
+    ALL_PIECE_TYPES.forEach((type, index) => {
+      const piece = TETROMINO_TYPES.includes(type as TetrominoType)
+        ? TETROMINOS[type as TetrominoType]
+        : PENTOMINOS[type as PentominoType]
+      map[index + 1] = piece.color
     })
     return map
   })
@@ -176,18 +368,30 @@ export function useTetris() {
     }
   }
 
-  const getRandomTetromino = (): Tetromino => {
-    const type = TETROMINO_TYPES[Math.floor(Math.random() * TETROMINO_TYPES.length)]
-    return { ...TETROMINOS[type], shape: TETROMINOS[type].shape.map(row => [...row]) }
+  const getRandomPiece = (): Tetromino => {
+    const config = currentConfig.value
+    const usePentomino = config.includePentomino && 
+      state.showPentomino && 
+      Math.random() < config.pentominoChance
+
+    if (usePentomino) {
+      const type = PENTOMINO_TYPES[Math.floor(Math.random() * PENTOMINO_TYPES.length)]
+      const piece = PENTOMINOS[type]
+      return { ...piece, shape: piece.shape.map(row => [...row]) }
+    } else {
+      const type = TETROMINO_TYPES[Math.floor(Math.random() * TETROMINO_TYPES.length)]
+      const piece = TETROMINOS[type]
+      return { ...piece, shape: piece.shape.map(row => [...row]) }
+    }
   }
 
   const initNextPieces = () => {
-    state.nextPieces = [getRandomTetromino(), getRandomTetromino(), getRandomTetromino()]
+    state.nextPieces = [getRandomPiece(), getRandomPiece(), getRandomPiece()]
   }
 
   const getNextPiece = (): Tetromino => {
     const piece = state.nextPieces.shift()!
-    state.nextPieces.push(getRandomTetromino())
+    state.nextPieces.push(getRandomPiece())
     return piece
   }
 
@@ -283,9 +487,10 @@ export function useTetris() {
     }
 
     if (linesCleared > 0) {
-      state.score += SCORE_TABLE[linesCleared] * state.level
+      const baseScore = SCORE_TABLE[Math.min(linesCleared, 5)] || 100 * linesCleared
+      state.score += baseScore * state.level
       state.lines += linesCleared
-      state.level = Math.floor(state.lines / 10) + 1
+      state.level = Math.floor(state.lines / currentConfig.value.linesPerLevel) + 1
       saveHighScore()
     }
   }
@@ -304,6 +509,7 @@ export function useTetris() {
   const rotatePiece = () => {
     if (!state.currentPiece || state.gameOver || state.isPaused) return
     if (state.currentPiece.type === 'O') return
+    if (state.currentPiece.type === 'X') return
 
     const rotated = rotateMatrix(state.currentPiece.shape)
     const originalShape = state.currentPiece.shape
@@ -401,6 +607,18 @@ export function useTetris() {
     state.isPaused = !state.isPaused
   }
 
+  const setDifficulty = (difficulty: Difficulty) => {
+    state.difficulty = difficulty
+  }
+
+  const setCustomSpeed = (speed: number) => {
+    state.customSpeed = Math.max(50, Math.min(2000, speed))
+  }
+
+  const setShowPentomino = (show: boolean) => {
+    state.showPentomino = show
+  }
+
   const handleKeyDown = (e: KeyboardEvent) => {
     if (!state.isStarted || state.gameOver) return
 
@@ -478,12 +696,18 @@ export function useTetris() {
     PREVIEW_SIZE,
     COLOR_MAP,
     typeColorMap,
+    DIFFICULTY_CONFIGS,
+    currentConfig,
+    dropInterval,
     startGame,
     togglePause,
     movePiece,
     rotatePiece,
     hardDrop,
     holdCurrentPiece,
-    getGhostY
+    getGhostY,
+    setDifficulty,
+    setCustomSpeed,
+    setShowPentomino
   }
 }

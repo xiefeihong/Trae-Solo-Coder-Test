@@ -1,30 +1,38 @@
-<script setup lang="ts">import { ref, onMounted, watch, computed } from 'vue'
-import { useTetris } from '../composables/useTetris'
+<script setup lang="ts">
+import { ref, onMounted, watch, computed } from 'vue'
+import { useTetris, Difficulty } from '../composables/useTetris'
 
 const {
   state,
   BOARD_WIDTH,
   BOARD_HEIGHT,
+  PREVIEW_SIZE,
   COLOR_MAP,
-  typeColorMap,
+  DIFFICULTY_CONFIGS,
+  dropInterval,
   startGame,
   togglePause,
   movePiece,
   rotatePiece,
   hardDrop,
   holdCurrentPiece,
-  getGhostY
+  getGhostY,
+  setDifficulty,
+  setCustomSpeed,
+  setShowPentomino
 } = useTetris()
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 const previewCanvasRefs = ref<(HTMLCanvasElement | null)[]>([])
 const holdCanvasRef = ref<HTMLCanvasElement | null>(null)
 
-const BLOCK_SIZE = 28
-const PREVIEW_BLOCK_SIZE = 18
+const BLOCK_SIZE = 26
+const PREVIEW_BLOCK_SIZE = 16
 
 const canvasWidth = BOARD_WIDTH * BLOCK_SIZE
 const canvasHeight = BOARD_HEIGHT * BLOCK_SIZE
+
+const showDifficultyModal = ref(false)
 
 const renderBoard = () => {
   const canvas = canvasRef.value
@@ -126,12 +134,12 @@ const renderPreview = () => {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    const previewSize = 4 * PREVIEW_BLOCK_SIZE
+    const previewSize = PREVIEW_SIZE * PREVIEW_BLOCK_SIZE
     ctx.fillStyle = '#0f0f23'
     ctx.fillRect(0, 0, previewSize, previewSize)
 
-    const offsetX = (4 - piece.shape.length) / 2
-    const offsetY = (4 - piece.shape.length) / 2
+    const offsetX = (PREVIEW_SIZE - piece.shape.length) / 2
+    const offsetY = (PREVIEW_SIZE - piece.shape.length) / 2
 
     for (let y = 0; y < piece.shape.length; y++) {
       for (let x = 0; x < piece.shape[y].length; x++) {
@@ -150,14 +158,14 @@ const renderHold = () => {
   const ctx = canvas.getContext('2d')
   if (!ctx) return
 
-  const holdSize = 4 * PREVIEW_BLOCK_SIZE
+  const holdSize = PREVIEW_SIZE * PREVIEW_BLOCK_SIZE
   ctx.fillStyle = '#0f0f23'
   ctx.fillRect(0, 0, holdSize, holdSize)
 
   if (state.holdPiece) {
     const piece = state.holdPiece
-    const offsetX = (4 - piece.shape.length) / 2
-    const offsetY = (4 - piece.shape.length) / 2
+    const offsetX = (PREVIEW_SIZE - piece.shape.length) / 2
+    const offsetY = (PREVIEW_SIZE - piece.shape.length) / 2
 
     for (let y = 0; y < piece.shape.length; y++) {
       for (let x = 0; x < piece.shape[y].length; x++) {
@@ -173,15 +181,14 @@ const setPreviewCanvasRef = (el: HTMLCanvasElement | null, index: number) => {
   previewCanvasRefs.value[index] = el
 }
 
-onMounted(() => {
-  renderBoard()
-})
+const selectDifficulty = (diff: Difficulty) => {
+  setDifficulty(diff)
+}
 
-watch(() => [state.board, state.currentPiece, state.currentPos, state.nextPieces, state.holdPiece, state.isStarted, state.gameOver], () => {
-  renderBoard()
-  renderPreview()
-  renderHold()
-}, { deep: true })
+const startGameWithClose = () => {
+  showDifficultyModal.value = false
+  startGame()
+}
 
 const handleMoveLeft = () => {
   if (!state.isPaused && state.isStarted && !state.gameOver) {
@@ -218,6 +225,19 @@ const handleHold = () => {
     holdCurrentPiece()
   }
 }
+
+onMounted(() => {
+  renderBoard()
+})
+
+watch(() => [state.board, state.currentPiece, state.currentPos, state.nextPieces, state.holdPiece, state.isStarted, state.gameOver], () => {
+  renderBoard()
+  renderPreview()
+  renderHold()
+}, { deep: true })
+
+const currentDifficultyLabel = computed(() => DIFFICULTY_CONFIGS[state.difficulty].label)
+const dropSpeedDisplay = computed(() => `${(dropInterval.value / 1000).toFixed(2)}s`)
 </script>
 
 <template>
@@ -233,8 +253,8 @@ const handleHold = () => {
           <h3>暂存 (C)</h3>
           <canvas
             ref="holdCanvasRef"
-            :width="4 * PREVIEW_BLOCK_SIZE"
-            :height="4 * PREVIEW_BLOCK_SIZE"
+            :width="PREVIEW_SIZE * PREVIEW_BLOCK_SIZE"
+            :height="PREVIEW_SIZE * PREVIEW_BLOCK_SIZE"
             class="preview-canvas"
           ></canvas>
         </div>
@@ -248,6 +268,11 @@ const handleHold = () => {
           <h3>最高分</h3>
           <div class="score-value high">{{ state.highScore }}</div>
         </div>
+
+        <div class="panel-section">
+          <h3>下落速度</h3>
+          <div class="speed-value">{{ dropSpeedDisplay }}</div>
+        </div>
       </div>
 
       <div class="main-game">
@@ -260,19 +285,26 @@ const handleHold = () => {
           ></canvas>
 
           <div v-if="!state.isStarted && !state.gameOver" class="overlay start-overlay">
-            <button @click="startGame" class="btn btn-primary">开始游戏</button>
+            <button @click="showDifficultyModal = true" class="btn btn-primary">选择难度</button>
+            <p class="current-diff">当前: {{ currentDifficultyLabel }}</p>
           </div>
 
           <div v-if="state.gameOver" class="overlay game-over-overlay">
             <h2>游戏结束!</h2>
             <p>得分: {{ state.score }}</p>
-            <button @click="startGame" class="btn btn-primary">重新开始</button>
+            <button @click="showDifficultyModal = true" class="btn btn-primary">再来一局</button>
           </div>
 
           <div v-if="state.isPaused && state.isStarted && !state.gameOver" class="overlay pause-overlay">
             <h2>暂停</h2>
             <button @click="togglePause" class="btn btn-secondary">继续</button>
           </div>
+        </div>
+
+        <div class="game-info-bar">
+          <span class="diff-badge" :class="state.difficulty">{{ currentDifficultyLabel }}</span>
+          <span class="level-badge">Lv.{{ state.level }}</span>
+          <span class="lines-badge">{{ state.lines }} 行</span>
         </div>
 
         <div class="mobile-controls">
@@ -300,8 +332,8 @@ const handleHold = () => {
               v-for="(_, index) in state.nextPieces"
               :key="index"
               :ref="(el) => setPreviewCanvasRef(el as HTMLCanvasElement, index)"
-              :width="4 * PREVIEW_BLOCK_SIZE"
-              :height="4 * PREVIEW_BLOCK_SIZE"
+              :width="PREVIEW_SIZE * PREVIEW_BLOCK_SIZE"
+              :height="PREVIEW_SIZE * PREVIEW_BLOCK_SIZE"
               class="preview-canvas"
             ></canvas>
           </div>
@@ -327,6 +359,53 @@ const handleHold = () => {
             <li><span>C</span> 暂存方块</li>
             <li><span>P/Esc</span> 暂停</li>
           </ul>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="showDifficultyModal" class="modal-overlay" @click.self="showDifficultyModal = false">
+      <div class="modal-content">
+        <h2>🎮 选择难度</h2>
+        <div class="difficulty-grid">
+          <button
+            v-for="(config, key) in DIFFICULTY_CONFIGS"
+            :key="key"
+            @click="selectDifficulty(key as Difficulty)"
+            class="diff-btn"
+            :class="{ active: state.difficulty === key }"
+          >
+            <span class="diff-label">{{ config.label }}</span>
+            <span class="diff-speed">速度: {{ (config.baseInterval / 1000).toFixed(2) }}s</span>
+            <span class="diff-pentomino" v-if="config.includePentomino">✨ 含5格方块</span>
+          </button>
+        </div>
+
+        <div v-if="state.difficulty === 'custom'" class="custom-settings">
+          <h3>⚙️ 自定义设置</h3>
+          <div class="setting-item">
+            <label>下落间隔 (ms):</label>
+            <input
+              type="range"
+              min="50"
+              max="2000"
+              step="50"
+              v-model.number="state.customSpeed"
+              @input="setCustomSpeed(state.customSpeed)"
+            />
+            <span class="setting-value">{{ state.customSpeed }}ms</span>
+          </div>
+          <div class="setting-item">
+            <label>启用5格方块:</label>
+            <input
+              type="checkbox"
+              v-model="state.showPentomino"
+              @change="setShowPentomino(state.showPentomino)"
+            />
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button @click="startGameWithClose" class="btn btn-primary btn-lg">开始游戏!</button>
         </div>
       </div>
     </div>
@@ -425,6 +504,12 @@ const handleHold = () => {
   color: #3b82f6;
 }
 
+.speed-value {
+  font-size: 1.3rem;
+  font-weight: bold;
+  color: #a855f7;
+}
+
 .controls-info {
   text-align: left;
 }
@@ -458,7 +543,61 @@ const handleHold = () => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 15px;
+  gap: 10px;
+}
+
+.game-info-bar {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  justify-content: center;
+}
+
+.diff-badge,
+.level-badge,
+.lines-badge {
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: bold;
+}
+
+.diff-badge {
+  background: linear-gradient(135deg, #a855f7, #6366f1);
+}
+
+.diff-badge.easy {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+}
+
+.diff-badge.normal {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+}
+
+.diff-badge.hard {
+  background: linear-gradient(135deg, #f97316, #ea580c);
+}
+
+.diff-badge.expert {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  animation: pulse 2s infinite;
+}
+
+.diff-badge.custom {
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.level-badge {
+  background: linear-gradient(135deg, #f97316, #ea580c);
+}
+
+.lines-badge {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
 }
 
 .canvas-container {
@@ -498,6 +637,12 @@ const handleHold = () => {
   font-size: 1.1rem;
 }
 
+.current-diff {
+  margin-top: 10px;
+  font-size: 0.9rem;
+  color: #888;
+}
+
 .btn {
   padding: 12px 30px;
   font-size: 1.1rem;
@@ -517,6 +662,11 @@ const handleHold = () => {
 .btn-primary:hover {
   transform: scale(1.05);
   box-shadow: 0 0 20px rgba(0, 245, 255, 0.5);
+}
+
+.btn-lg {
+  padding: 15px 40px;
+  font-size: 1.2rem;
 }
 
 .btn-secondary {
@@ -586,6 +736,127 @@ const handleHold = () => {
   width: 70px;
 }
 
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: linear-gradient(135deg, #1a1a3a, #0f0f23);
+  border: 2px solid #2a2a5a;
+  border-radius: 15px;
+  padding: 30px;
+  max-width: 500px;
+  width: 90%;
+}
+
+.modal-content h2 {
+  color: #fff;
+  text-align: center;
+  margin-bottom: 20px;
+  font-size: 1.8rem;
+}
+
+.difficulty-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.diff-btn {
+  background: #2a2a5a;
+  border: 2px solid #4a4a8a;
+  border-radius: 10px;
+  padding: 15px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.diff-btn:hover {
+  background: #3a3a7a;
+  transform: translateY(-2px);
+}
+
+.diff-btn.active {
+  border-color: #00f5ff;
+  box-shadow: 0 0 15px rgba(0, 245, 255, 0.4);
+}
+
+.diff-label {
+  color: #fff;
+  font-weight: bold;
+  font-size: 1rem;
+}
+
+.diff-speed {
+  color: #888;
+  font-size: 0.85rem;
+}
+
+.diff-pentomino {
+  color: #ffd700;
+  font-size: 0.75rem;
+}
+
+.custom-settings {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.custom-settings h3 {
+  color: #a855f7;
+  margin-bottom: 15px;
+  font-size: 1.1rem;
+}
+
+.setting-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.setting-item label {
+  color: #ccc;
+  min-width: 120px;
+}
+
+.setting-item input[type="range"] {
+  flex: 1;
+  min-width: 150px;
+}
+
+.setting-value {
+  color: #00f5ff;
+  font-weight: bold;
+  min-width: 60px;
+}
+
+.setting-item input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+}
+
+.modal-actions {
+  text-align: center;
+}
+
 @media (max-width: 768px) {
   .game-wrapper {
     flex-direction: column;
@@ -618,6 +889,14 @@ const handleHold = () => {
 
   .mobile-controls {
     display: flex;
+  }
+
+  .modal-content {
+    padding: 20px;
+  }
+
+  .difficulty-grid {
+    grid-template-columns: 1fr 1fr;
   }
 }
 </style>
