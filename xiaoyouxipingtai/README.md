@@ -134,14 +134,14 @@ const emit = defineEmits<{
   description: '这是一个示例游戏',   // 游戏描述
   icon: 'gamepad',                  // Font Awesome 图标名
   color: '#ff6b35',                 // 主题色
-  component: 'MyGame',              // 组件名（对应GameModal中的映射）
+  component: 'MyGame',              // 组件名（对应GameView中的映射）
   isDeveloping: false               // 是否开发中
 }
 ```
 
-### 步骤3：在GameModal中注册组件映射
+### 步骤3：在GameView中注册组件映射
 
-编辑 `src/components/GameModal.vue`，在 `componentMap` 中添加你的组件：
+编辑 `src/views/GameView.vue`，在 `componentMap` 中添加你的组件：
 
 ```typescript
 import MyGame from '../games/MyGame.vue'

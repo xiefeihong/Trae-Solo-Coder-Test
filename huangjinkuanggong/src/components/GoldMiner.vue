@@ -3,6 +3,7 @@ import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useGoldMiner, type Item } from '../composables/useGoldMiner'
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
+const showRules = ref(false)
 const CANVAS_WIDTH = 900
 const CANVAS_HEIGHT = 600
 
@@ -324,8 +325,9 @@ defineExpose({
       @touchstart.prevent="handleClick"
     ></canvas>
     
-    <div class="game-tip">
-      点击屏幕或按空格键发射钩子
+    <div class="game-footer">
+      <span class="game-tip">点击屏幕或按空格键发射钩子</span>
+      <button @click="showRules = true" class="btn-help">❓ 游戏规则</button>
     </div>
     
     <div v-if="gameState.showLevelComplete" class="modal-overlay">
@@ -432,6 +434,62 @@ defineExpose({
         </div>
       </div>
     </div>
+
+    <div v-if="showRules" class="modal-overlay" @click.self="showRules = false">
+      <div class="modal-content rules-modal">
+        <h2>📖 游戏规则</h2>
+        <div class="rules-content">
+          <div class="rule-section">
+            <h3>🎮 操作方式</h3>
+            <p>• 点击屏幕任意位置或按<strong>空格键</strong>发射钩子</p>
+            <p>• 钩子会自动摆动，抓住时机发射！</p>
+          </div>
+
+          <div class="rule-section">
+            <h3>💎 物品说明</h3>
+            <div class="item-rules">
+              <div class="item-rule">
+                <span class="item-icon small-gold">●</span>
+                <span>小金块 - 100分，重量轻</span>
+              </div>
+              <div class="item-rule">
+                <span class="item-icon big-gold">●</span>
+                <span>大金块 - 500分，重量中等</span>
+              </div>
+              <div class="item-rule">
+                <span class="item-icon diamond">◆</span>
+                <span>钻石 - 300分，非常轻盈</span>
+              </div>
+              <div class="item-rule">
+                <span class="item-icon stone">●</span>
+                <span>石头 - 0分，非常重！</span>
+              </div>
+              <div class="item-rule">
+                <span class="item-icon piggy">●</span>
+                <span>小猪存钱罐 - 随机价值</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="rule-section">
+            <h3>🎯 游戏目标</h3>
+            <p>• 在限定时间内达到目标分数即可过关</p>
+            <p>• 关卡越高，目标分数越高，时间也越多</p>
+          </div>
+
+          <div class="rule-section">
+            <h3>🛒 升级系统</h3>
+            <p>• 过关后获得金币（分数 ÷ 100）</p>
+            <p>• 使用金币购买升级提升能力</p>
+          </div>
+        </div>
+        <div class="modal-buttons">
+          <button @click="showRules = false" class="btn btn-primary">
+            ✓ 知道了
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -491,11 +549,32 @@ canvas {
   touch-action: none;
 }
 
-.game-tip {
-  text-align: center;
-  color: #aaa;
+.game-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-top: 15px;
+}
+
+.game-tip {
+  color: #aaa;
   font-size: 14px;
+}
+
+.btn-help {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.btn-help:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
 }
 
 .modal-overlay {
@@ -631,5 +710,86 @@ canvas {
   height: 100%;
   background: linear-gradient(90deg, #FFD700, #FFA500);
   transition: width 0.3s;
+}
+
+.rules-modal {
+  max-width: 500px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.rules-content {
+  text-align: left;
+  margin: 20px 0;
+}
+
+.rule-section {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 15px;
+  border-radius: 10px;
+  margin-bottom: 15px;
+}
+
+.rule-section:last-child {
+  margin-bottom: 0;
+}
+
+.rule-section h3 {
+  color: #FFD700;
+  margin-bottom: 10px;
+  font-size: 18px;
+}
+
+.rule-section p {
+  margin: 5px 0;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.rule-section strong {
+  color: #FFD700;
+}
+
+.item-rules {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.item-rule {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.item-icon {
+  font-size: 20px;
+  width: 24px;
+  text-align: center;
+}
+
+.item-icon.small-gold {
+  color: #FFD700;
+  font-size: 16px;
+}
+
+.item-icon.big-gold {
+  color: #FFD700;
+  font-size: 24px;
+}
+
+.item-icon.diamond {
+  color: #00FFFF;
+}
+
+.item-icon.stone {
+  color: #808080;
+  font-size: 20px;
+}
+
+.item-icon.piggy {
+  color: #FFB6C1;
+  font-size: 18px;
 }
 </style>
